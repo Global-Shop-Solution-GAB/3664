@@ -1,0 +1,410 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.Global.sText.Declare(String)
+
+Function.Intrinsic.Debug.SetScriptVersion("0.1.46","True")
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.ODBC.Connection!con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+F.Intrinsic.String.Concat(V.Caller.ScriptVer,V.Ambient.NewLine,V.Global.sText)
+V.Global.sText.Set(V.Caller.ScriptVer)
+F.Intrinsic.Control.If(V.Caller.Hook,=,12230)
+	F.Intrinsic.Control.CallSub("Bin")
+F.Intrinsic.Control.ElseIf(V.Caller.Hook,=,12240)
+	F.Intrinsic.Control.CallSub("Deleted")
+F.Intrinsic.Control.EndIf
+'F.ODBC.con.Close
+
+
+Program.Sub.Main.End
+
+Program.Sub.Bin.Start
+V.Local.sSQL.Declare(String)
+V.Local.sBin.Declare(String)
+V.Local.sSwitch.Declare(String)
+V.Local.sBody.Declare(String)
+V.Local.sName.Declare(String)
+V.Local.sRName.Declare(String)
+V.Local.sREmail.Declare(String)
+V.Local.sOrder.Declare(String)
+V.Local.sLine.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sMBody.Declare(String)
+
+F.Intrinsic.String.Format(V.Passed.000060,"0000000",V.Local.sOrder)
+F.Intrinsic.String.LPad(V.Passed.000051,"0",3,V.Local.sLine)
+F.Intrinsic.String.Concat(V.Local.sLine,"0",V.Local.sLine)
+F.Intrinsic.String.Concat("Select Bin from V_Order_Lines where Order_No='",V.local.sOrder,"' and Record_No='",V.Local.sLine,"'",V.Local.sSQL)
+'F.Intrinsic.UI.Msgbox(V.Local.sSQL)
+F.Intrinsic.Debug.Stop
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.eof,=,True)
+	V.Local.sBin.set("")
+F.Intrinsic.Control.Else
+	V.Local.sBin.Set(V.ODBC.con!rst.FieldVal!Bin)
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+V.Local.sSwitch.Set(V.Caller.Switches)
+F.Intrinsic.Control.If(V.Caller.User,=,"SUPERVSR")
+	V.Local.sREmail.Set("jsharpe@krendlmachine.com")
+	V.Local.sRName.Set("Julie Sharpe")
+F.Intrinsic.Control.Else
+	F.Intrinsic.String.Concat("Select * from User_File where ID='",V.Caller.User,"' and Company='",V.Caller.CompanyCode,"'",V.Local.sSQL)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstUser",V.Local.sSQL)
+	F.Intrinsic.Control.If(V.ODBC.con!rstUser.EOF,=,False)
+		F.Intrinsic.Control.If(V.ODBC.con!rstUser.FieldValIsNull!Name,=,True)
+			V.Local.sRName.Set("")
+		F.Intrinsic.Control.Else
+			V.Local.sRName.Set(V.ODBC.con!rstUser.FieldVal!Name)
+		F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.If(V.ODBC.con!rstUser.FieldValIsNull!Email,=,True)
+			V.Local.sREmail.Set("")
+		F.Intrinsic.Control.Else
+			V.Local.sREmail.Set(V.ODBC.con!rstUser.FieldVal!Email)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstUser.Close
+F.Intrinsic.Control.EndIf
+'F.Intrinsic.ui.Msgbox(V.Local.sRName)
+'F.Intrinsic.UI.Msgbox(V.Local.sREmail)
+F.Intrinsic.String.Concat("Sales Order: ",V.Local.sOrder," Line: ",V.Local.sLine," Part: ",V.Passed.000052," Description: ",V.Passed.000056," Qty: ",V.Passed.000007," Bin: ",V.Passed.000023,V.Local.sMBody)
+'F.Intrinsic.UI.Msgbox(V.Local.sSwitch)
+F.Intrinsic.Control.If(V.Caller.Switches,=,"N")
+	F.Intrinsic.Control.If(V.Passed.000023,=,"MTO")
+		F.Intrinsic.String.Concat(V.Local.sMBody," Added to the line",V.Local.sBody)
+		'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+		F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email like '"dlindeman@krendlmachine.com%"'")
+		F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+			V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+		F.Intrinsic.Control.Else
+			V.Local.sName.Set("Donna Lindeman")
+		F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstName.Close
+		'this is where I will code the wrapper for the innernet messaging
+		F.Global.Messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+		F.Intrinsic.String.Concat("dlindeman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody,V.Local.sMsg)
+		F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+		F.Intrinsic.String.Concat(V.Global.sText,V.Local.sMsg,V.Global.sText)
+	
+	F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"PUR")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"'Addedtotheline",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Patti Fleck")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin Added to Sales Order",V.Local.sBody)
+			F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin Added to Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+			'F.Intrinsic.String.Concat(V.Global.sText,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.ElseIf(V.Caller.Switches,=,"O")
+	'F.Intrinsic.Debug.Stop
+	F.Intrinsic.Control.If(V.Local.sBin,=,"")
+		F.Intrinsic.Control.If(V.Passed.000023,=,"MTO")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order Line",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Donna Lindeman")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+			F.Global.messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed on Sales Order",V.Local.sBody)
+			F.Intrinsic.String.Concat("dlinderman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed on Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+			'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+			'F.ODBC.con!rstName.Close
+		F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"PUR")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order line",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Patti Fleck")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+			F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin Changed on Sales Order",V.local.sBody)
+			F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin changed on Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.ElseIf(V.Local.sBin,=,"MTO")
+		F.Intrinsic.Control.If(V.Passed.000023,=,"MTO")
+'			'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+'			F.ODBC.con!rstName.Close
+		F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"PUR")
+				F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order line",V.Local.sBody)
+				'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+				F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+				F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+					V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+				F.Intrinsic.Control.Else
+					V.Local.sName.Set("Patti Fleck")
+				F.Intrinsic.Control.EndIf
+				F.ODBC.con!rstName.Close
+				'this is where I will code the wrapper for the innernet messaging
+				'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+				F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin Changed on Sales Order",V.local.sBody)
+				F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin changed on Sales Order",V.Local.sBody,V.Local.sMsg)
+				F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+				F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Deleted Bin on the Sales Order Line",V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Donna Lindeman")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			F.Global.messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin Deleted on Sales Order Lines",V.Local.sBody)
+			F.Intrinsic.String.Concat("dlinderman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin Deleted on Sales Order Lines",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+'			'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+'			F.ODBC.con!rstName.Close
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.ElseIf(V.Local.sBin,=,"PUR")
+		F.Intrinsic.Control.If(V.Passed.000023,=,"PUR")
+			'Nothing, email is not needed
+		F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"MTO")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order Line",V.Local.sBody)
+				'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+				F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Donna Lindeman")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+				F.Global.messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed to PUR on Sales Order Line",V.Local.sBody)
+				F.Intrinsic.String.Concat("dlinderman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed to PUR on Sales Order Line",V.Local.sBody,V.Local.sMsg)
+				F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+				F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+'			'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+'			F.ODBC.con!rstName.Close
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Deleted from the line",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Patti Fleck")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin was deleted from the Sales Order",V.local.sBody)
+			F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin deleted from the Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.Passed.000023,=,"MTO")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order Line",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Donna Lindeman")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+			F.Global.messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed on Sales Order",V.Local.sBody)
+			F.Intrinsic.String.Concat("dlinderman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin changed on Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+'			'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+'			F.ODBC.con!rstName.Close
+		F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"PUR")
+			F.Intrinsic.String.Concat(V.Local.sMBody,"' Changed on the Sales Order line",V.Local.sBody)
+			'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+			F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+			F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+				V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+			F.Intrinsic.Control.Else
+				V.Local.sName.Set("Patti Fleck")
+			F.Intrinsic.Control.EndIf
+			F.ODBC.con!rstName.Close
+			'this is where I will code the wrapper for the innernet messaging
+			'F.Intrinsic.Control.If(V.Local.sBin,<>,V.Passed.000023)
+			F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin Changed on Sales Order",V.local.sBody)
+			F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin changed on Sales Order",V.Local.sBody,V.Local.sMsg)
+			F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+			F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.ElseIf(V.Caller.Switches,=,"D")
+	F.Intrinsic.Control.If(V.Local.sBin,=,"MTO")
+		'F.Intrinsic.Debug.Stop
+		F.Intrinsic.String.Concat(V.Local.sMBody,"' Line Deleted",V.Local.sBody)
+		'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+		F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+		F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+			V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+		F.Intrinsic.Control.Else
+			V.Local.sName.Set("Donna Lindeman")
+		F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstName.Close
+		'this is where I will code the wrapper for the innernet messaging
+		F.Global.Messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"Line was deleted from the Sales Order",V.local.sBody)
+		F.Intrinsic.String.Concat("dlindeman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"Line was deleted from the Sales Order",V.Local.sBody,V.Local.sMsg)
+		F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+'		'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin deleted from Sales Order",V.Local.sBody)
+'		F.ODBC.con!rstName.Close
+	F.Intrinsic.Control.ElseIf(V.Local.sBin,=,"PUR")
+		F.Intrinsic.String.Concat(V.Local.sMBody,"' Deleted line",V.Local.sBody)
+		'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+		F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+		F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+			V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+		F.Intrinsic.Control.Else
+			V.Local.sName.Set("Patti Fleck")
+		F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstName.Close
+		'this is where I will code the wrapper for the innernet messaging
+		F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin was deleted from the Sales Order",V.local.sBody)
+		F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin deleted from the Sales Order",V.Local.sBody,V.Local.sMsg)
+		F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+		F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+F.Intrinsic.File.String2File("C:\SOLines.txt",V.global.sText)
+
+
+
+
+
+Program.Sub.Bin.End
+
+Program.Sub.Deleted.Start
+V.Local.sSQL.Declare(String)
+V.Local.sBin.Declare(String)
+V.Local.sSwitch.Declare(String)
+V.Local.sBody.Declare(String)
+V.Local.sName.Declare(String)
+V.Local.sRName.Declare(String)
+V.Local.sREmail.Declare(String)
+V.Local.sOrder.Declare(String)
+V.Local.sLine.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sMBody.Declare(String)
+
+F.Intrinsic.String.Format(V.Passed.000060,"0000000",V.Local.sOrder)
+F.Intrinsic.String.LPad(V.Passed.000051,"0",3,V.Local.sLine)
+F.Intrinsic.String.Concat(V.Local.sLine,"0",V.Local.sLine)
+F.Intrinsic.String.Concat("Select Bin from V_Order_Lines where Order_No='",V.local.sOrder,"' and Record_No='",V.Local.sLine,"'",V.Local.sSQL)
+'F.Intrinsic.UI.Msgbox(V.Local.sSQL)
+F.Intrinsic.Debug.Stop
+F.ODBC.Connection!con.OpenRecordsetRO("rst",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rst.eof,=,True)
+	V.Local.sBin.set("")
+F.Intrinsic.Control.Else
+	V.Local.sBin.Set(V.ODBC.con!rst.FieldVal!Bin)
+F.Intrinsic.Control.EndIf
+F.ODBC.con!rst.Close
+
+V.Local.sSwitch.Set(V.Caller.Switches)
+F.Intrinsic.String.Concat("Select * from User_File where ID='",V.Caller.User,"' and Company='",V.Caller.CompanyCode,"'",V.Local.sSQL)
+F.ODBC.Connection!con.OpenRecordsetRO("rstUser",V.Local.sSQL)
+F.Intrinsic.Control.If(V.ODBC.con!rstUser.EOF,=,False)
+	F.Intrinsic.Control.If(V.ODBC.con!rstUser.FieldValIsNull!Name,=,True)
+		V.Local.sRName.Set("")
+	F.Intrinsic.Control.Else
+		V.Local.sRName.Set(V.ODBC.con!rstUser.FieldVal!Name)
+	F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.If(V.ODBC.con!rstUser.FieldValIsNull!Email,=,True)
+		V.Local.sREmail.Set("")
+	F.Intrinsic.Control.Else
+		V.Local.sREmail.Set(V.ODBC.con!rstUser.FieldVal!Email)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+F.Intrinsic.String.Concat("Sales Order: ",V.Local.sOrder," Line: ",V.Local.sLine," Part: ",V.Passed.000052," Description: ",V.Passed.000056," Qty: ",V.Passed.000007," Bin: ",V.Passed.000023,V.Local.sMBody)
+F.ODBC.con!rstUser.Close
+
+F.Intrinsic.Control.If(V.Passed.000023,=,"PUR")
+	F.Intrinsic.String.Concat(V.Local.sMBody,"' Deleted from the line",V.Local.sBody)
+	'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"pfleck@krendlmachine.com"'")
+	F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+		V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+	F.Intrinsic.Control.Else
+		V.Local.sName.Set("Patti Fleck")
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstName.Close
+	F.global.Messaging.CreateEMMessage("pfleck@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin was deleted from the Sales Order",V.local.sBody)
+	F.Intrinsic.String.Concat("pfleck@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin deleted from the Sales Order",V.Local.sBody,V.Local.sMsg)
+	F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+	F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+	'F.Intrinsic.Control.EndIf
+'	F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"jrode@krendlmachine.com"'")
+'	F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+'		V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+'	F.Intrinsic.Control.Else
+'		V.Local.sName.Set("Jenny Rode")
+'	F.Intrinsic.Control.EndIf
+'	F.Global.Messaging.CreateEMMessage("jrode@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin was deleted from the Sales Order",V.local.sBody)
+'	F.Intrinsic.String.Concat("jrode@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"PUR Bin deleted from the Sales Order",V.Local.sBody,V.Local.sMsg)
+'	F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+'	F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+'	F.ODBC.con!rstName.Close
+F.Intrinsic.Control.ElseIf(V.Passed.000023,=,"MTO")
+	F.Intrinsic.String.Concat(V.Local.sMBody,"' Deleted from the Sales Order Line",V.Local.sBody)
+		'F.Intrinsic.UI.Msgbox(V.Local.sBody)
+	F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"dlindeman@krendlmachine.com"'")
+	F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+		V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+	F.Intrinsic.Control.Else
+		V.Local.sName.Set("Donna Lindeman")
+	F.Intrinsic.Control.EndIf
+	F.ODBC.con!rstName.Close
+	F.Global.messaging.CreateEMMessage("dlindeman@krendlmachine.com",V.Local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin deleted from the Sales Order Line",V.Local.sBody)
+	F.Intrinsic.String.Concat("dlinderman@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin deleted from the Sales Order Line",V.Local.sBody,V.Local.sMsg)
+	F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+	F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+	'F.Intrinsic.Control.EndIf
+'	F.ODBC.Connection!con.OpenRecordsetRO("rstName","Select Name from User_File where Email='"jrode@krendlmachine.com"'")
+'	F.Intrinsic.Control.If(V.ODBC.con!rstName.EOF,=,False)
+'		V.Local.sName.Set(V.ODBC.con!rstName.FieldVal!Name)
+'	F.Intrinsic.Control.Else
+'		V.Local.sName.Set("Jenny Rode")
+'	F.Intrinsic.Control.EndIf
+'	F.global.messaging.CreateEMMessage("jrode@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin deleted from the Sales Order Line",V.Local.sBody)
+'	F.Intrinsic.String.Concat("jrode@krendlmachine.com",V.local.sName,V.Local.sREmail,V.Local.sRName,"MTO Bin deleted from the Sales Order Line",V.Local.sBody,V.Local.sMsg)
+'	F.Intrinsic.String.Concat(V.Global.sText,V.Ambient.NewLine,V.Local.sMsg,V.Global.sText)
+'	F.Intrinsic.UI.Msgbox(V.Local.sMsg)
+	'f.Global.Messaging.CreateEMMessage("emarlow@gssmail.com","Erin Marlow",V.Local.sREmail,V.Local.sRName,"MTO Bin Added to Sales Order",V.Local.sBody)
+	F.ODBC.con!rstName.Close
+F.Intrinsic.Control.EndIf
+		
+
+Program.Sub.Deleted.End
+
+Program.Sub.Comments.Start
+${$0$}$ATG_3664_KRE010_SOLines$}$RLK$}$4/1/2016
+${$1$}$$}$$}$0$}$12230$}$OES0201I-SAVE-BTN-HOOK$}$4/1/2016 12:42:42 PM$}$(Program: ORD201; Screen: OES0201I)
+
+Program.Sub.Comments.End
+
